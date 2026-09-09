@@ -128,8 +128,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const enterDemoUser = (role: UserRole = 'DOCTOR') => {
+  const enterDemoUser = async (role: UserRole = 'DOCTOR') => {
     const demoUser = role === 'PATIENT' ? DEMO_PATIENT_USER : DEFAULT_DEMO_USER;
+    const creds = role === 'PATIENT'
+      ? { email: 'patient@medikiosk.demo', pass: 'Patient!123' }
+      : { email: 'doctor@medikiosk.demo', pass: 'Doctor!123' };
+
+    try {
+      const res = await api.login(creds.email, creds.pass);
+      if (res && res.access_token) {
+        setToken(res.access_token);
+        setUser(res.user || demoUser);
+        localStorage.setItem('medikiosk_token', res.access_token);
+        localStorage.setItem('medikiosk_user', JSON.stringify(res.user || demoUser));
+        return;
+      }
+    } catch {
+      // Fallback to resilient demo token recognized by backend
+    }
+
     setUser(demoUser);
     const mockToken = `demo_token_${role.toLowerCase()}_2026`;
     setToken(mockToken);

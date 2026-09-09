@@ -19,6 +19,14 @@ def get_current_user(
         )
     
     token = authorization.split(" ")[1]
+
+    # Support instant 1-click demo tokens
+    if token.startswith("demo_token_"):
+        email = "patient@medikiosk.demo" if "patient" in token.lower() else "doctor@medikiosk.demo"
+        demo_user = db.query(User).filter(User.email == email).first()
+        if demo_user:
+            return demo_user
+
     payload = decode_access_token(token)
     if not payload or "sub" not in payload:
         raise HTTPException(
