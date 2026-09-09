@@ -115,12 +115,15 @@ app.include_router(routes_abha.router, prefix=settings.API_V1_STR)
 app.include_router(routes_documents.router, prefix=settings.API_V1_STR)
 
 @app.get("/", tags=["Root"])
+@app.get("/api", tags=["Root"])
+@app.get("/api/", tags=["Root"])
 def root():
     return {
         "name": "MediKiosk API",
         "status": "online",
-        "version": "1.0.0",
-        "docs": "/docs"
+        "version": settings.VERSION,
+        "docs": "/docs",
+        "health": "/api/health"
     }
 
 @app.get("/api/health", tags=["Health"])
