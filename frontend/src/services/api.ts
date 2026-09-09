@@ -1,21 +1,61 @@
-const getApiBaseUrl = (): string => {
+const CANDIDATE_API_URLS: string[] = (() => {
+  const list: string[] = [];
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl && envUrl.trim() && !envUrl.includes(':10000') && !envUrl.startsWith('medikiosk-backend:')) {
     let clean = envUrl.trim().replace(/\/+$/, '');
     if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
       clean = `https://${clean}`;
     }
-    return clean.endsWith('/api') ? clean : `${clean}/api`;
+    list.push(clean.endsWith('/api') ? clean : `${clean}/api`);
   }
 
-  if (typeof window !== 'undefined' && window.location && window.location.hostname.endsWith('.onrender.com')) {
-    return 'https://medikiosk-backend-jfkm.onrender.com/api';
+  if (typeof window !== 'undefined' && window.location) {
+    if (window.location.protocol === 'https:') {
+      list.push('https://medikiosk-backend-jfkm.onrender.com/api');
+    } else {
+      // Local dev HTTP: prefer Vite proxy, then direct IPv4 loopback, then localhost, then cloud
+      list.push('/api');
+      list.push('http://127.0.0.1:8000/api');
+      list.push('http://localhost:8000/api');
+      list.push('https://medikiosk-backend-jfkm.onrender.com/api');
+    }
+  } else {
+    list.push('/api');
   }
 
-  return 'http://localhost:8000/api';
-};
+  return Array.from(new Set(list));
+})();
 
-const API_BASE_URL = getApiBaseUrl();
+let currentBaseUrl = CANDIDATE_API_URLS[0] || '/api';
+const API_BASE_URL = currentBaseUrl;
+
+const nativeFetch = typeof window !== 'undefined' && window.fetch ? window.fetch.bind(window) : globalThis.fetch.bind(globalThis);
+
+async function resilientFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const urlStr = typeof input === 'string' ? input : input.toString();
+  const match = urlStr.match(/\/api(\/.*)?$/);
+  const path = match ? (match[1] || '') : '';
+
+  try {
+    return await nativeFetch(input, init);
+  } catch (err: any) {
+    const isNetworkError = err?.name === 'TypeError' || (err?.message && err.message.toLowerCase().includes('fetch'));
+    if (isNetworkError && path) {
+      for (const candidate of CANDIDATE_API_URLS) {
+        if (candidate === currentBaseUrl) continue;
+        try {
+          const fallbackUrl = `${candidate}${path}`;
+          const res = await nativeFetch(fallbackUrl, init);
+          currentBaseUrl = candidate;
+          return res;
+        } catch {
+          // Continue to next candidate
+        }
+      }
+    }
+    throw err;
+  }
+}
 
 const getAuthHeaders = (): Record<string, string> => {
   const token = localStorage.getItem('medikiosk_token');
@@ -30,6 +70,9 @@ const getAuthHeaders = (): Record<string, string> => {
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
+    if (res.status === 502 || res.status === 503 || res.status === 504) {
+      throw new Error('Backend service is waking up (cold start). Please wait 10 seconds and try again.');
+    }
     let errorDetail = `Request failed with status ${res.status}`;
     try {
       const errorJson = await res.json();
@@ -41,6 +84,9 @@ async function handleResponse<T>(res: Response): Promise<T> {
   }
   return await res.json();
 }
+
+
+const fetch = resilientFetch;
 
 export const api = {
   // Health

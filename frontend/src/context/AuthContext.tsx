@@ -78,7 +78,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return { success: false, error: 'Incorrect email or password.' };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Invalid credentials or connection error.' };
+      const msg = err?.message || '';
+      if (msg.toLowerCase().includes('failed to fetch')) {
+        return { success: false, error: 'Unable to connect to backend service. Please check your internet or server status.' };
+      }
+      return { success: false, error: msg || 'Invalid credentials or connection error.' };
     } finally {
       setIsLoading(false);
     }
