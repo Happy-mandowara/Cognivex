@@ -30,6 +30,16 @@ Base = declarative_base()
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+    try:
+        url_str = str(engine.url).lower()
+        if "postgres" in url_str:
+            from sqlalchemy import text
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE ayush_assessments ALTER COLUMN vikriti_state TYPE TEXT;"))
+                conn.execute(text("ALTER TABLE ayush_assessments ALTER COLUMN dominant_prakriti TYPE VARCHAR(128);"))
+                conn.commit()
+    except Exception as e:
+        logger.info(f"Database schema check / alteration note: {e}")
 
 init_db()
 

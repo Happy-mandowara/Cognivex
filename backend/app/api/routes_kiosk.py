@@ -1,7 +1,10 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+import logging
 from typing import Dict, Any
+
+logger = logging.getLogger(__name__)
 
 from ..core.database import get_db
 from ..models.models import Encounter, Patient, AyushAssessment, ClinicalSummary
@@ -220,7 +223,24 @@ def submit_kiosk_intake(payload: EncounterCreate, db: Session = Depends(get_db))
     )
     db.add(clinical_summary)
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        err_str = str(e).lower()
+        if "value too long" in err_str or "truncation" in err_str:
+            logger.warning(f"String length truncation detected during intake save ({e}), auto-trimming and retrying...")
+            if ayush_assessment.vikriti_state and len(ayush_assessment.vikriti_state) > 64:
+                ayush_assessment.vikriti_state = ayush_assessment.vikriti_state[:64]
+            if ayush_assessment.dominant_prakriti and len(ayush_assessment.dominant_prakriti) > 32:
+                ayush_assessment.dominant_prakriti = ayush_assessment.dominant_prakriti[:32]
+            db.add(new_encounter)
+            db.add(ayush_assessment)
+            db.add(clinical_summary)
+            db.commit()
+        else:
+            raise e
+
     db.refresh(new_encounter)
     return new_encounter
 
