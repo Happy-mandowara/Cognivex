@@ -1,15 +1,60 @@
-const getApiBaseUrl = (): string => {
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (!envUrl) return 'http://localhost:8000/api';
+export const getApiBaseUrl = (): string => {
+  // 1. User/UI override in localStorage
+  try {
+    const saved = localStorage.getItem('medikiosk_api_url');
+    if (saved && saved.trim()) {
+      let clean = saved.trim().replace(/\/+$/, '');
+      if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+        clean = `https://${clean}`;
+      }
+      return clean.endsWith('/api') ? clean : `${clean}/api`;
+    }
+  } catch {}
 
-  let clean = envUrl.trim().replace(/\/+$/, '');
-  if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-    clean = `https://${clean}`;
+  // 2. Build-time environment variable (ignore internal private network hosts like :10000)
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && envUrl.trim() && !envUrl.includes(':10000') && !envUrl.startsWith('medikiosk-backend:')) {
+    let clean = envUrl.trim().replace(/\/+$/, '');
+    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+      clean = `https://${clean}`;
+    }
+    return clean.endsWith('/api') ? clean : `${clean}/api`;
   }
-  return clean.endsWith('/api') ? clean : `${clean}/api`;
+
+  // 3. Render cloud auto-detection (runs on client browser on *.onrender.com)
+  if (typeof window !== 'undefined' && window.location && window.location.hostname.endsWith('.onrender.com')) {
+    const host = window.location.hostname;
+    const backendHost = host.replace('medikiosk-frontend', 'medikiosk-backend');
+    return `https://${backendHost}/api`;
+  }
+
+  // 4. Default for local development
+  return 'http://localhost:8000/api';
 };
 
-const API_BASE_URL = getApiBaseUrl();
+export const setApiBaseUrl = (newUrl: string): void => {
+  try {
+    if (!newUrl || !newUrl.trim()) {
+      localStorage.removeItem('medikiosk_api_url');
+    } else {
+      let clean = newUrl.trim().replace(/\/+$/, '');
+      if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+        clean = `https://${clean}`;
+      }
+      if (!clean.endsWith('/api')) {
+        clean = `${clean}/api`;
+      }
+      localStorage.setItem('medikiosk_api_url', clean);
+    }
+  } catch {}
+};
+
+// Dynamic wrapper that evaluates getApiBaseUrl() dynamically inside template literals
+const API_BASE_URL = {
+  toString() {
+    return getApiBaseUrl();
+  }
+} as unknown as string;
 
 const getAuthHeaders = (): Record<string, string> => {
   const token = localStorage.getItem('medikiosk_token');

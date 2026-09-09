@@ -10,10 +10,14 @@ import {
   AlertCircle, 
   CheckCircle2, 
   ArrowRight,
-  Shield
+  Shield,
+  Server,
+  Settings,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth, UserRole } from '../../context/AuthContext';
 import { FormField } from '../ui/FormField';
+import { getApiBaseUrl, setApiBaseUrl, api } from '../../services/api';
 
 interface AuthPageProps {
   initialMode?: 'login' | 'signup';
@@ -42,6 +46,38 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // API URL Configuration & Health State
+  const [currentApiUrl, setCurrentApiUrl] = useState<string>(() => getApiBaseUrl());
+  const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
+  const [customApiUrlInput, setCustomApiUrlInput] = useState<string>(() => getApiBaseUrl());
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'checking' | 'healthy' | 'failed'>('idle');
+
+  const checkConnection = async (urlToCheck?: string) => {
+    setConnectionStatus('checking');
+    if (urlToCheck) {
+      setApiBaseUrl(urlToCheck);
+      setCurrentApiUrl(getApiBaseUrl());
+    }
+    try {
+      const res = await api.getHealth();
+      if (res && res.status === 'HEALTHY') {
+        setConnectionStatus('healthy');
+      } else {
+        setConnectionStatus('failed');
+      }
+    } catch {
+      setConnectionStatus('failed');
+    }
+  };
+
+  const formatAuthError = (rawError?: string): string => {
+    if (!rawError) return 'Authentication failed. Please verify your credentials.';
+    if (rawError.toLowerCase().includes('failed to fetch') || rawError.toLowerCase().includes('networkerror')) {
+      return 'Unable to reach backend API. If deployed on Render free tier, the backend server spins down when idle and takes ~30–50 seconds to wake up. You can also verify or update the backend URL below.';
+    }
+    return rawError;
+  };
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -61,7 +97,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         if (onSuccess) onSuccess('DOCTOR');
       }
     } else {
-      setErrorMsg(res.error || 'Authentication failed. Please verify your credentials.');
+      const formatted = formatAuthError(res.error);
+      setErrorMsg(formatted);
+      if (formatted.includes('Render free tier')) {
+        setShowConfigModal(true);
+      }
     }
   };
 
@@ -294,6 +334,81 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               </button>
             </form>
           )}
+
+          {/* Backend Connection & Configuration */}
+          <div className="mt-6 pt-4 border-t border-[#F1F5F9] text-xs">
+            <div className="flex items-center justify-between text-[#64748B]">
+              <div className="flex items-center space-x-1.5 truncate max-w-[240px]">
+                <Server className="w-3.5 h-3.5 shrink-0 text-[#2563EB]" />
+                <span className="truncate font-mono text-[11px]">{currentApiUrl}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConfigModal(!showConfigModal);
+                  setCustomApiUrlInput(currentApiUrl);
+                }}
+                className="inline-flex items-center space-x-1 text-[#2563EB] hover:text-[#1D4ED8] font-semibold cursor-pointer shrink-0 ml-2"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                <span>{showConfigModal ? 'Close' : 'Configure'}</span>
+              </button>
+            </div>
+
+            {showConfigModal && (
+              <div className="mt-3 p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[8px] space-y-2.5 animate-in fade-in">
+                <label className="block text-[11px] font-semibold text-[#334155]">
+                  Backend API Endpoint (Render / Custom)
+                </label>
+                <input
+                  type="text"
+                  value={customApiUrlInput}
+                  onChange={(e) => setCustomApiUrlInput(e.target.value)}
+                  placeholder="https://medikiosk-backend.onrender.com/api"
+                  className="w-full px-2.5 py-1.5 bg-white border border-[#CBD5E1] rounded-[6px] text-xs font-mono text-[#0F172A] focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                />
+                <div className="flex items-center space-x-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      checkConnection(customApiUrlInput);
+                    }}
+                    disabled={connectionStatus === 'checking'}
+                    className="py-1 px-3 bg-[#0F172A] hover:bg-[#1E293B] text-white rounded-[6px] text-[11px] font-semibold flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${connectionStatus === 'checking' ? 'animate-spin' : ''}`} />
+                    <span>{connectionStatus === 'checking' ? 'Testing...' : 'Save & Test'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setApiBaseUrl('');
+                      const def = getApiBaseUrl();
+                      setCustomApiUrlInput(def);
+                      setCurrentApiUrl(def);
+                      checkConnection(def);
+                    }}
+                    className="py-1 px-2.5 text-[#64748B] hover:text-[#0F172A] text-[11px] font-medium cursor-pointer"
+                  >
+                    Reset Default
+                  </button>
+                </div>
+
+                {connectionStatus === 'healthy' && (
+                  <div className="text-[11px] text-[#15803D] font-semibold flex items-center space-x-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Backend is connected and healthy!</span>
+                  </div>
+                )}
+                {connectionStatus === 'failed' && (
+                  <div className="text-[11px] text-[#B91C1C] font-semibold flex items-center space-x-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Could not reach endpoint. Please ensure the backend is active on Render.</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
         </div>
 
