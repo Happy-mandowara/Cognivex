@@ -1,9 +1,17 @@
 export const getApiBaseUrl = (): string => {
   // 1. User/UI override in localStorage
   try {
-    const saved = localStorage.getItem('medikiosk_api_url');
+    let saved = localStorage.getItem('medikiosk_api_url');
     if (saved && saved.trim()) {
       let clean = saved.trim().replace(/\/+$/, '');
+      // Auto-heal missing .onrender.com or outdated default
+      if (clean.includes('medikiosk-backend-jfkm') && !clean.includes('.onrender.com')) {
+        clean = clean.replace('medikiosk-backend-jfkm', 'medikiosk-backend-jfkm.onrender.com');
+        localStorage.setItem('medikiosk_api_url', clean);
+      } else if (clean.includes('medikiosk-backend.onrender.com')) {
+        clean = clean.replace('medikiosk-backend.onrender.com', 'medikiosk-backend-jfkm.onrender.com');
+        localStorage.setItem('medikiosk_api_url', clean);
+      }
       if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
         clean = `https://${clean}`;
       }
@@ -23,9 +31,7 @@ export const getApiBaseUrl = (): string => {
 
   // 3. Render cloud auto-detection (runs on client browser on *.onrender.com)
   if (typeof window !== 'undefined' && window.location && window.location.hostname.endsWith('.onrender.com')) {
-    const host = window.location.hostname;
-    const backendHost = host.replace('medikiosk-frontend', 'medikiosk-backend');
-    return `https://${backendHost}/api`;
+    return 'https://medikiosk-backend-jfkm.onrender.com/api';
   }
 
   // 4. Default for local development
