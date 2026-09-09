@@ -1,33 +1,54 @@
 const CANDIDATE_API_URLS: string[] = (() => {
   const list: string[] = [];
+  const RENDER_BACKEND_URL = 'https://medikiosk-backend-jfkm.onrender.com/api';
+
   const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl && envUrl.trim() && !envUrl.includes(':10000') && !envUrl.startsWith('medikiosk-backend:')) {
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim() && !envUrl.includes(':10000')) {
     let clean = envUrl.trim().replace(/\/+$/, '');
+    // If slug without domain was provided (e.g. "medikiosk-backend-jfkm"), append .onrender.com
+    if (!clean.includes('.') && !clean.startsWith('http://localhost') && !clean.startsWith('http://127.0.0.1')) {
+      clean = `${clean}.onrender.com`;
+    }
     if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
       clean = `https://${clean}`;
     }
+    try {
+      const parsed = new URL(clean);
+      if (!parsed.hostname.includes('.') && parsed.hostname !== 'localhost') {
+        parsed.hostname = `${parsed.hostname}.onrender.com`;
+        clean = `${parsed.protocol}//${parsed.hostname}${parsed.pathname}`;
+      }
+    } catch {}
     list.push(clean.endsWith('/api') ? clean : `${clean}/api`);
   }
 
   if (typeof window !== 'undefined' && window.location) {
     if (window.location.protocol === 'https:') {
-      list.push('https://medikiosk-backend-jfkm.onrender.com/api');
+      list.push(RENDER_BACKEND_URL);
     } else {
       // Local dev HTTP: prefer Vite proxy, then direct IPv4 loopback, then localhost, then cloud
       list.push('/api');
       list.push('http://127.0.0.1:8000/api');
       list.push('http://localhost:8000/api');
-      list.push('https://medikiosk-backend-jfkm.onrender.com/api');
+      list.push(RENDER_BACKEND_URL);
     }
   } else {
     list.push('/api');
+    list.push(RENDER_BACKEND_URL);
   }
 
+  list.push(RENDER_BACKEND_URL);
   return Array.from(new Set(list));
 })();
 
-let currentBaseUrl = CANDIDATE_API_URLS[0] || '/api';
+let currentBaseUrl = (() => {
+  if (typeof window !== 'undefined' && window.location && window.location.protocol === 'https:') {
+    return CANDIDATE_API_URLS.find(u => u.startsWith('https://')) || 'https://medikiosk-backend-jfkm.onrender.com/api';
+  }
+  return CANDIDATE_API_URLS[0] || '/api';
+})();
 const API_BASE_URL = currentBaseUrl;
+
 
 const nativeFetch = typeof window !== 'undefined' && window.fetch ? window.fetch.bind(window) : globalThis.fetch.bind(globalThis);
 

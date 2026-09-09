@@ -106,6 +106,13 @@ def seed_demo_users(db: Session):
             "role": "PATIENT",
             "full_name": "Ananya Sharma",
             "patient_id": "P-ANANYA-DEMO"
+        },
+        {
+            "id": "USR-HAPPY-01",
+            "email": "happy@gmail.com",
+            "password": "Doctor!123",
+            "role": "DOCTOR",
+            "full_name": "Happy Mandowara (Doctor)"
         }
     ]
 
