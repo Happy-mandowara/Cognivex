@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node & Frontend
+frontend/node_modules/
+frontend/dist/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+
+# Database & Uploads
+medikiosk.db
+medikiosk.db-journal
+backend/medikiosk.db
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Screenshots & Local Test Artifacts
+screenshot_*.png

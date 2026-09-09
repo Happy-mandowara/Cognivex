@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: medikiosk_db
+    restart: always
+    environment:
+      POSTGRES_DB: medikiosk
+      POSTGRES_USER: medikiosk_user
+      POSTGRES_PASSWORD: medikiosk_secure_password_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medikiosk_user -d medikiosk"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: medikiosk_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: medikiosk_backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://medikiosk_user:medikiosk_secure_password_2026@db:5432/medikiosk
+      REDIS_URL: redis://redis:6379/0
+      ABDM_GATEWAY_URL: https://dev.abdm.gov.in/gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./backend:/app/backend
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: medikiosk_frontend
+    restart: always
+    ports:
+      - "3000:80"
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:

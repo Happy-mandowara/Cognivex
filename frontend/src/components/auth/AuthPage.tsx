@@ -1,0 +1,308 @@
+import React, { useState } from 'react';
+import { 
+  Activity, 
+  Stethoscope, 
+  User, 
+  Lock, 
+  Mail, 
+  UserPlus, 
+  LogIn, 
+  AlertCircle, 
+  CheckCircle2, 
+  ArrowRight,
+  Shield
+} from 'lucide-react';
+import { useAuth, UserRole } from '../../context/AuthContext';
+import { FormField } from '../ui/FormField';
+
+interface AuthPageProps {
+  initialMode?: 'login' | 'signup';
+  onSuccess?: (role: UserRole) => void;
+}
+
+export const AuthPage: React.FC<AuthPageProps> = ({ 
+  initialMode = 'login',
+  onSuccess 
+}) => {
+  const { login, signup, isLoading } = useAuth();
+  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
+  
+  // Login form state
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  
+  // Signup form state
+  const [signupName, setSignupName] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+  const [signupRole, setSignupRole] = useState<'PATIENT' | 'DOCTOR'>('PATIENT');
+
+  // Status feedback
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    if (!loginEmail || !loginPassword) {
+      setErrorMsg('Please enter both your email and password.');
+      return;
+    }
+
+    const res = await login(loginEmail, loginPassword);
+    if (res.success) {
+      try {
+        const userObj = JSON.parse(localStorage.getItem('medikiosk_user') || '{}');
+        if (onSuccess) onSuccess(userObj.role || 'DOCTOR');
+      } catch {
+        if (onSuccess) onSuccess('DOCTOR');
+      }
+    } else {
+      setErrorMsg(res.error || 'Authentication failed. Please verify your credentials.');
+    }
+  };
+
+  const handleSignupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    if (!signupName.trim() || !signupEmail.trim() || !signupPassword) {
+      setErrorMsg('All registration fields are required.');
+      return;
+    }
+
+    if (signupPassword !== signupConfirmPassword) {
+      setErrorMsg('Passwords do not match. Please re-enter.');
+      return;
+    }
+
+    if (signupPassword.length < 6) {
+      setErrorMsg('Password must be at least 6 characters in length.');
+      return;
+    }
+
+    const res = await signup(signupName, signupEmail, signupPassword, signupRole);
+    if (res.success) {
+      setSuccessMsg('Account registered successfully. Redirecting to workspace...');
+      if (onSuccess) onSuccess(signupRole);
+    } else {
+      setErrorMsg(res.error || 'Registration failed. An account with this email may already exist.');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center py-12 sm:px-6 lg:px-8 selection:bg-[#2563EB] selection:text-white">
+      {/* Brand Header */}
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-[12px] bg-[#0F172A] text-white shadow-sm mb-3">
+          <Activity className="w-6 h-6 text-[#2563EB]" />
+        </div>
+        <h1 className="text-2xl font-semibold text-[#0F172A] tracking-tight">
+          Medi<span className="text-[#2563EB]">Kiosk</span>
+        </h1>
+        <p className="text-xs text-[#64748B] mt-1">
+          Clinical Case-Taking & Integrated Healthcare Record System
+        </p>
+      </div>
+
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
+        <div className="bg-white py-8 px-6 sm:px-8 border border-[#E2E8F0] rounded-[12px] shadow-[0_1px_3px_0_rgba(15,23,42,0.06)] relative">
+          
+          {/* Toggle: Login vs Signup */}
+          <div className="flex bg-[#F1F5F9] p-1 rounded-[8px] mb-6 border border-[#E2E8F0]">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('login');
+                setErrorMsg('');
+                setSuccessMsg('');
+              }}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-[6px] transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+                mode === 'login'
+                  ? 'bg-white text-[#2563EB] shadow-xs'
+                  : 'text-[#475569] hover:text-[#0F172A]'
+              }`}
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Sign In</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('signup');
+                setErrorMsg('');
+                setSuccessMsg('');
+              }}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-[6px] transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+                mode === 'signup'
+                  ? 'bg-white text-[#2563EB] shadow-xs'
+                  : 'text-[#475569] hover:text-[#0F172A]'
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Create Account</span>
+            </button>
+          </div>
+
+          {/* Feedback banners */}
+          {errorMsg && (
+            <div className="mb-5 p-3 rounded-[8px] bg-[#FEF2F2] border border-[#FECACA] text-[#B91C1C] text-xs flex items-start space-x-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="mb-5 p-3 rounded-[8px] bg-[#F0FDF4] border border-[#BBF7D0] text-[#15803D] text-xs flex items-start space-x-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{successMsg}</span>
+            </div>
+          )}
+
+          {/* SIGN IN FORM */}
+          {mode === 'login' && (
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <FormField label="Email Address" required>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-[#64748B] absolute left-3.5 top-3" />
+                  <input
+                    type="email"
+                    required
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="Enter your registered email"
+                    className="w-full pl-10 pr-3 py-2 bg-white border border-[#E2E8F0] rounded-[8px] text-xs font-medium text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+                  />
+                </div>
+              </FormField>
+
+              <FormField label="Password" required>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-[#64748B] absolute left-3.5 top-3" />
+                  <input
+                    type="password"
+                    required
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="w-full pl-10 pr-3 py-2 bg-white border border-[#E2E8F0] rounded-[8px] text-xs font-medium text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+                  />
+                </div>
+              </FormField>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-2.5 px-4 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-[8px] text-xs font-semibold shadow-xs transition-all flex items-center justify-center space-x-2 disabled:opacity-50 cursor-pointer"
+              >
+                <span>{isLoading ? 'Authenticating...' : 'Sign In to Workspace'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+          )}
+
+          {/* REGISTRATION FORM */}
+          {mode === 'signup' && (
+            <form onSubmit={handleSignupSubmit} className="space-y-4">
+              <FormField label="Full Name" required>
+                <input
+                  type="text"
+                  required
+                  value={signupName}
+                  onChange={(e) => setSignupName(e.target.value)}
+                  placeholder="e.g. Dr. Rajesh Gupta or Sunita Sharma"
+                  className="w-full px-3 py-2 bg-white border border-[#E2E8F0] rounded-[8px] text-xs font-medium text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+                />
+              </FormField>
+
+              <FormField label="Email Address" required>
+                <input
+                  type="email"
+                  required
+                  value={signupEmail}
+                  onChange={(e) => setSignupEmail(e.target.value)}
+                  placeholder="e.g. user@hospital.org"
+                  className="w-full px-3 py-2 bg-white border border-[#E2E8F0] rounded-[8px] text-xs font-medium text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+                />
+              </FormField>
+
+              <FormField label="Account Type (Role)" required helperText="Administrative accounts are provisioned by hospital security only.">
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setSignupRole('PATIENT')}
+                    className={`py-2 px-3 rounded-[8px] border text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all cursor-pointer ${
+                      signupRole === 'PATIENT'
+                        ? 'bg-[#F0FDF4] border-[#BBF7D0] text-[#15803D]'
+                        : 'border-[#E2E8F0] text-[#475569] hover:bg-[#F1F5F9]'
+                    }`}
+                  >
+                    <User className="w-3.5 h-3.5 text-[#15803D]" />
+                    <span>Patient</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSignupRole('DOCTOR')}
+                    className={`py-2 px-3 rounded-[8px] border text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all cursor-pointer ${
+                      signupRole === 'DOCTOR'
+                        ? 'bg-[#EFF6FF] border-[#BFDBFE] text-[#2563EB]'
+                        : 'border-[#E2E8F0] text-[#475569] hover:bg-[#F1F5F9]'
+                    }`}
+                  >
+                    <Stethoscope className="w-3.5 h-3.5 text-[#2563EB]" />
+                    <span>Practitioner</span>
+                  </button>
+                </div>
+              </FormField>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormField label="Password" required>
+                  <input
+                    type="password"
+                    required
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
+                    placeholder="Min. 6 characters"
+                    className="w-full px-3 py-2 bg-white border border-[#E2E8F0] rounded-[8px] text-xs font-medium text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+                  />
+                </FormField>
+
+                <FormField label="Confirm Password" required>
+                  <input
+                    type="password"
+                    required
+                    value={signupConfirmPassword}
+                    onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                    placeholder="Repeat password"
+                    className="w-full px-3 py-2 bg-white border border-[#E2E8F0] rounded-[8px] text-xs font-medium text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+                  />
+                </FormField>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-2.5 px-4 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-[8px] text-xs font-semibold shadow-xs transition-all flex items-center justify-center space-x-2 disabled:opacity-50 cursor-pointer"
+              >
+                <span>{isLoading ? 'Registering...' : 'Register Account'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+          )}
+
+        </div>
+
+        {/* Security Notice */}
+        <div className="mt-6 text-center text-xs text-[#64748B] flex items-center justify-center space-x-2">
+          <Shield className="w-3.5 h-3.5 text-[#15803D]" />
+          <span>Protected with cryptographic authentication & Role-Based Access Control</span>
+        </div>
+      </div>
+    </div>
+  );
+};
