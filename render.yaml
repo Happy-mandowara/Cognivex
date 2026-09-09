@@ -43,7 +43,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://medikiosk-backend.onrender.com
+        value: https://medikiosk-backend-jfkm.onrender.com
 
 databases:
   # 3. PostgreSQL 16 Managed Database

@@ -41,6 +41,12 @@ export const setApiBaseUrl = (newUrl: string): void => {
       if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
         clean = `https://${clean}`;
       }
+      // If entered e.g. "https://medikiosk-backend-jfkm/api" without ".onrender.com"
+      const withoutProto = clean.replace(/^https?:\/\//, '');
+      const firstSegment = withoutProto.split('/')[0];
+      if (!firstSegment.includes('.') && !firstSegment.includes('localhost') && !firstSegment.includes(':')) {
+        clean = clean.replace(firstSegment, `${firstSegment}.onrender.com`);
+      }
       if (!clean.endsWith('/api')) {
         clean = `${clean}/api`;
       }
