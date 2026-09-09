@@ -6,7 +6,11 @@ try:
     import pypdf
 except ImportError:
     pypdf = None
-from PIL import Image
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 class OCRService:
     """
@@ -47,6 +51,8 @@ class OCRService:
 
         elif ext in [".jpg", ".jpeg", ".png"]:
             try:
+                if Image is None:
+                    return f"Clinical Image document ({os.path.basename(file_path)}) - Image processing library (Pillow) not installed."
                 with Image.open(file_path) as img:
                     width, height = img.size
                     mode = img.mode
