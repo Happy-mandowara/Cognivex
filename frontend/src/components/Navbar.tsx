@@ -127,19 +127,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             
             {/* ⚡ SIH Demo Mode Button */}
             <button
-              onClick={async () => {
-                try {
-                  await api.runDemo();
-                } catch (e) {
-                  console.warn("Demo run note:", e);
-                }
+              onClick={() => {
                 setIsDemoModalOpen(true);
+                api.runDemo().catch((e) => console.warn("Demo run note:", e));
               }}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-[8px] text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
-              title="Execute full SIH 2026 PS-26047 clinical demo flow"
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-[8px] text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
+              title="Run end-to-end clinical intake & decision support demo"
             >
               <Zap className="w-3.5 h-3.5 fill-current text-white shrink-0" />
-              <span>⚡ Run SIH Demo (Ananya)</span>
+              <span>Run Clinical Demo</span>
             </button>
 
             {/* Language Toggle */}
