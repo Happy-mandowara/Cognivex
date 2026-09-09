@@ -1,5 +1,8 @@
 import os
+import json
+from typing import Union, List
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "MediKiosk - Patient Case-Taking Software"
@@ -21,7 +24,7 @@ class Settings(BaseSettings):
     ABDM_CLIENT_SECRET: str = os.getenv("ABDM_CLIENT_SECRET", "MEDIKIOSK_SECRET_KEY")
     
     # CORS
-    BACKEND_CORS_ORIGINS: list[str] = [
+    BACKEND_CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
@@ -29,6 +32,20 @@ class Settings(BaseSettings):
         "http://localhost:8080",
         "*"
     ]
+
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, str):
+            if v.startswith("[") and v.endswith("]"):
+                try:
+                    return json.loads(v)
+                except Exception:
+                    pass
+            return [i.strip() for i in v.split(",") if i.strip()]
+        elif isinstance(v, (list, tuple)):
+            return list(v)
+        return ["*"]
 
     class Config:
         case_sensitive = True
