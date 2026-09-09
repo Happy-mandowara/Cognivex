@@ -35,7 +35,7 @@ services:
   - type: web
     name: medikiosk-frontend
     runtime: static
-    buildCommand: cd frontend && npm install && npm run build
+    buildCommand: npm --prefix frontend install && npm --prefix frontend run build
     staticPublishPath: frontend/dist
     routes:
       - type: rewrite
@@ -43,7 +43,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://medikiosk-backend-jfkm.onrender.com
+        value: https://medikiosk-backend-jfkm.onrender.com/api
 
 databases:
   # 3. PostgreSQL 16 Managed Database
