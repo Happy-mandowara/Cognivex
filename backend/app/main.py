@@ -54,14 +54,52 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS Middleware
+from fastapi import Request, Response
+
+# CORS Middleware with universal origin regex and credentials support
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_origin_regex=r".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+@app.middleware("http")
+async def cors_preflight_middleware(request: Request, call_next):
+    # Intercept any OPTIONS preflight request before anything else
+    if request.method == "OPTIONS":
+        origin = request.headers.get("origin", "*")
+        res = Response(content="", status_code=200)
+        res.headers["Access-Control-Allow-Origin"] = origin
+        res.headers["Access-Control-Allow-Credentials"] = "true"
+        res.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD"
+        res.headers["Access-Control-Allow-Headers"] = request.headers.get("access-control-request-headers", "*")
+        res.headers["Access-Control-Max-Age"] = "86400"
+        return res
+    
+    response = await call_next(request)
+    origin = request.headers.get("origin")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    elif "Access-Control-Allow-Origin" not in response.headers:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
+@app.options("/{full_path:path}")
+async def options_handler(full_path: str, request: Request):
+    origin = request.headers.get("origin", "*")
+    res = Response(content="", status_code=200)
+    res.headers["Access-Control-Allow-Origin"] = origin
+    res.headers["Access-Control-Allow-Credentials"] = "true"
+    res.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD"
+    res.headers["Access-Control-Allow-Headers"] = request.headers.get("access-control-request-headers", "*")
+    res.headers["Access-Control-Max-Age"] = "86400"
+    return res
+
 
 # Include API Routers
 app.include_router(routes_auth.router, prefix=settings.API_V1_STR)

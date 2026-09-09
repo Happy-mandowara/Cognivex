@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   HeartPulse, 
   Stethoscope, 
@@ -8,10 +8,13 @@ import {
   Activity,
   ShieldCheck, 
   User, 
-  LogOut
+  LogOut,
+  Zap
 } from 'lucide-react';
 import { useAuth, UserRole } from '../context/AuthContext';
 import { StatusBadge } from './ui/StatusBadge';
+import { DemoRunnerModal } from './demo/DemoRunnerModal';
+import { api } from '../services/api';
 
 interface NavbarProps {
   activeTab: string;
@@ -28,6 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const { user, logout } = useAuth();
   const currentRole: UserRole = user?.role || 'PATIENT';
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
 
   // Strict role-specific navigation definitions
   const navDefinitions = [
@@ -118,9 +122,26 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* Right Action Tools: Language, Current User, Logout */}
-          <div className="flex items-center space-x-3">
+          {/* Right Action Tools: SIH Demo Mode, Language, Current User, Logout */}
+          <div className="flex items-center space-x-2.5">
             
+            {/* ⚡ SIH Demo Mode Button */}
+            <button
+              onClick={async () => {
+                try {
+                  await api.runDemo();
+                } catch (e) {
+                  console.warn("Demo run note:", e);
+                }
+                setIsDemoModalOpen(true);
+              }}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-[8px] text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
+              title="Execute full SIH 2026 PS-26047 clinical demo flow"
+            >
+              <Zap className="w-3.5 h-3.5 fill-current text-white shrink-0" />
+              <span>⚡ Run SIH Demo (Ananya)</span>
+            </button>
+
             {/* Language Toggle */}
             <button
               onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
@@ -183,6 +204,16 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
       </div>
+
+      {/* SIH Demo Tour Modal */}
+      <DemoRunnerModal
+        isOpen={isDemoModalOpen}
+        onClose={() => setIsDemoModalOpen(false)}
+        onCompleted={() => {
+          setIsDemoModalOpen(false);
+          setActiveTab('doctor');
+        }}
+      />
     </header>
   );
 };

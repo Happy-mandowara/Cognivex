@@ -72,8 +72,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   const formatAuthError = (rawError?: string): string => {
     if (!rawError) return 'Authentication failed. Please verify your credentials.';
-    if (rawError.toLowerCase().includes('failed to fetch') || rawError.toLowerCase().includes('networkerror')) {
-      return 'Unable to reach backend API. If deployed on Render free tier, the backend server spins down when idle and takes ~30–50 seconds to wake up. You can also verify or update the backend URL below.';
+    const lower = rawError.toLowerCase();
+    if (
+      lower.includes('failed to fetch') ||
+      lower.includes('preflight') ||
+      lower.includes('networkerror') ||
+      lower.includes('cors') ||
+      lower.includes('load failed')
+    ) {
+      return `CORS preflight / Network error connecting to ${getApiBaseUrl()}. If using Render, free services take 30–50s to wake up from sleep or your backend service may have a unique URL. Click "Configure Backend URL" below to test or update the endpoint.`;
     }
     return rawError;
   };
@@ -99,7 +106,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     } else {
       const formatted = formatAuthError(res.error);
       setErrorMsg(formatted);
-      if (formatted.includes('Render free tier')) {
+      if (formatted.includes('CORS preflight') || formatted.includes('Network error')) {
         setShowConfigModal(true);
       }
     }
@@ -130,9 +137,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       setSuccessMsg('Account registered successfully. Redirecting to workspace...');
       if (onSuccess) onSuccess(signupRole);
     } else {
-      setErrorMsg(res.error || 'Registration failed. An account with this email may already exist.');
+      const formatted = formatAuthError(res.error);
+      setErrorMsg(formatted);
+      if (formatted.includes('CORS preflight') || formatted.includes('Network error')) {
+        setShowConfigModal(true);
+      }
     }
   };
+
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center py-12 sm:px-6 lg:px-8 selection:bg-[#2563EB] selection:text-white">
@@ -206,6 +218,49 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           {/* SIGN IN FORM */}
           {mode === 'login' && (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
+              {/* Quick Demo Fill Buttons */}
+              <div className="p-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[8px] space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-[#64748B] uppercase tracking-wider">Quick Demo Accounts</span>
+                  <span className="text-[10px] text-[#2563EB] font-medium">1-Click Fill</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginEmail('doctor@medikiosk.demo');
+                      setLoginPassword('Doctor!123');
+                      setErrorMsg('');
+                    }}
+                    className="py-1 px-2 bg-white hover:bg-[#EFF6FF] border border-[#CBD5E1] hover:border-[#2563EB] rounded-[6px] text-[10px] font-semibold text-[#1E293B] text-center transition-colors cursor-pointer"
+                  >
+                    🩺 Doctor
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginEmail('patient@medikiosk.demo');
+                      setLoginPassword('Patient!123');
+                      setErrorMsg('');
+                    }}
+                    className="py-1 px-2 bg-white hover:bg-[#F0FDF4] border border-[#CBD5E1] hover:border-[#16A34A] rounded-[6px] text-[10px] font-semibold text-[#1E293B] text-center transition-colors cursor-pointer"
+                  >
+                    👤 Patient
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginEmail('admin@medikiosk.demo');
+                      setLoginPassword('Admin!123');
+                      setErrorMsg('');
+                    }}
+                    className="py-1 px-2 bg-white hover:bg-[#FAF5FF] border border-[#CBD5E1] hover:border-[#9333EA] rounded-[6px] text-[10px] font-semibold text-[#1E293B] text-center transition-colors cursor-pointer"
+                  >
+                    🛡️ Admin
+                  </button>
+                </div>
+              </div>
+
               <FormField label="Email Address" required>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-[#64748B] absolute left-3.5 top-3" />

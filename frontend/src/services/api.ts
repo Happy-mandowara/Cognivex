@@ -92,6 +92,15 @@ export const api = {
     }
   },
 
+  // SIH 2026 Demo Execution
+  async runDemo() {
+    const res = await fetch(`${API_BASE_URL}/demo/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return await handleResponse<any>(res);
+  },
+
   // Auth & RBAC
   async login(email: string, password: string) {
     const res = await fetch(`${API_BASE_URL}/auth/login`, {
