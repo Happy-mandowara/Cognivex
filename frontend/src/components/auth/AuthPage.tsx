@@ -28,7 +28,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   initialMode = 'login',
   onSuccess 
 }) => {
-  const { login, signup, isLoading } = useAuth();
+  const { login, signup, enterDemoUser, isLoading } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   
   // Login form state
@@ -164,6 +164,36 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="bg-white py-8 px-6 sm:px-8 border border-[#E2E8F0] rounded-[12px] shadow-[0_1px_3px_0_rgba(15,23,42,0.06)] relative">
           
+          {/* Instant 1-Click Persona Access */}
+          <div className="mb-5 p-3 bg-[#EFF6FF] border border-[#BFDBFE] rounded-[10px] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-[#1E40AF] uppercase tracking-wide">Instant 1-Click Persona Access</span>
+              <span className="text-[10px] text-[#2563EB] font-medium">Skip Login</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  enterDemoUser('DOCTOR');
+                  if (onSuccess) onSuccess('DOCTOR');
+                }}
+                className="py-2 px-3 bg-white hover:bg-[#DBEAFE] border border-[#93C5FD] text-[#1E40AF] rounded-[8px] text-xs font-semibold flex items-center justify-center space-x-1.5 shadow-xs transition-colors cursor-pointer"
+              >
+                <span>🩺 Enter as Doctor</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  enterDemoUser('PATIENT');
+                  if (onSuccess) onSuccess('PATIENT');
+                }}
+                className="py-2 px-3 bg-white hover:bg-[#DCFCE7] border border-[#86EFAC] text-[#166534] rounded-[8px] text-xs font-semibold flex items-center justify-center space-x-1.5 shadow-xs transition-colors cursor-pointer"
+              >
+                <span>👤 Enter as Patient</span>
+              </button>
+            </div>
+          </div>
+
           {/* Toggle: Login vs Signup */}
           <div className="flex bg-[#F1F5F9] p-1 rounded-[8px] mb-6 border border-[#E2E8F0]">
             <button

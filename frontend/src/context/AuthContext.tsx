@@ -16,11 +16,28 @@ export interface AuthResult {
   error?: string;
 }
 
+export const DEFAULT_DEMO_USER: UserProfile = {
+  id: "USR-DOCTOR-01",
+  email: "doctor@medikiosk.demo",
+  role: "DOCTOR",
+  full_name: "Dr. V. K. Sharma (MD)",
+  patient_id: "P-ANANYA-DEMO"
+};
+
+export const DEMO_PATIENT_USER: UserProfile = {
+  id: "USR-PATIENT-01",
+  email: "patient@medikiosk.demo",
+  role: "PATIENT",
+  full_name: "Ananya Sharma",
+  patient_id: "P-ANANYA-DEMO"
+};
+
 interface AuthContextType {
   user: UserProfile | null;
   token: string | null;
   login: (email: string, password: string) => Promise<AuthResult>;
   signup: (name: string, email: string, password: string, role: string) => Promise<AuthResult>;
+  enterDemoUser: (role?: UserRole) => void;
   logout: () => void;
   isLoading: boolean;
   refreshUser: () => Promise<void>;
@@ -29,18 +46,21 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Initialize state directly from localStorage for instant persistence across browser refresh
+  // Initialize state directly from localStorage, defaulting to DEMO DOCTOR so the full UI is instantly accessible
   const [user, setUser] = useState<UserProfile | null>(() => {
     try {
       const savedUser = localStorage.getItem('medikiosk_user');
-      return savedUser ? JSON.parse(savedUser) : null;
+      if (savedUser) return JSON.parse(savedUser);
+      // Default to demo Doctor so the white-bg clinical UI is immediately visible
+      localStorage.setItem('medikiosk_user', JSON.stringify(DEFAULT_DEMO_USER));
+      return DEFAULT_DEMO_USER;
     } catch {
-      return null;
+      return DEFAULT_DEMO_USER;
     }
   });
 
   const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('medikiosk_token');
+    return localStorage.getItem('medikiosk_token') || 'demo_token_doctor_2026';
   });
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -108,6 +128,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const enterDemoUser = (role: UserRole = 'DOCTOR') => {
+    const demoUser = role === 'PATIENT' ? DEMO_PATIENT_USER : DEFAULT_DEMO_USER;
+    setUser(demoUser);
+    const mockToken = `demo_token_${role.toLowerCase()}_2026`;
+    setToken(mockToken);
+    localStorage.setItem('medikiosk_token', mockToken);
+    localStorage.setItem('medikiosk_user', JSON.stringify(demoUser));
+  };
+
   const logout = () => {
     try {
       api.logout().catch(() => {});
@@ -121,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, signup, logout, isLoading, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, login, signup, enterDemoUser, logout, isLoading, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
