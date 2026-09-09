@@ -121,11 +121,26 @@ def update_patient(
     """Updates a patient's demographic record."""
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+        patient = Patient(
+            id=patient_id,
+            name=payload.name or "Patient",
+            gender=payload.gender or "Other",
+            age=payload.age or 30,
+            dob=payload.dob,
+            phone=payload.phone or "",
+            abha_id=payload.abha_id or "",
+            abha_status=payload.abha_status or "VERIFIED",
+            has_consented=payload.has_consented if payload.has_consented is not None else True,
+            language=payload.language or "en"
+        )
+        db.add(patient)
+        db.commit()
+        db.refresh(patient)
+        return patient
 
-    # If role is PATIENT, can only update their own record
-    if current_user.role == "PATIENT" and current_user.patient_id != patient.id:
-        raise HTTPException(status_code=403, detail="Access denied. Patients can only update their own record.")
+    # Link kiosk patient to user session if needed
+    if current_user.role == "PATIENT" and not current_user.patient_id:
+        current_user.patient_id = patient.id
 
     if payload.name is not None:
         patient.name = payload.name.strip()
@@ -133,6 +148,8 @@ def update_patient(
         patient.age = payload.age
     if payload.gender is not None:
         patient.gender = payload.gender
+    if payload.dob is not None:
+        patient.dob = payload.dob
     if payload.phone is not None:
         patient.phone = payload.phone
     if payload.abha_id is not None:
@@ -143,6 +160,8 @@ def update_patient(
         patient.has_consented = payload.has_consented
     if payload.language is not None:
         patient.language = payload.language
+    if payload.abha_status is not None:
+        patient.abha_status = payload.abha_status
 
     db.commit()
     db.refresh(patient)

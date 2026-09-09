@@ -59,7 +59,7 @@ class SocratesInput(BaseModel):
     onset: Optional[str] = ""
     character: Optional[str] = ""
     radiation: Optional[str] = ""
-    associations: Optional[List[str]] = []
+    associations: Optional[Any] = []
     time_course: Optional[str] = ""
     exacerbating_relieving: Optional[str] = ""
     severity: Optional[int] = 5 # 1 to 10
@@ -85,6 +85,7 @@ class AshtavidhaParikshaInput(BaseModel):
 class EncounterCreate(BaseModel):
     patient_id: str
     chief_complaint: str
+    abha_id: Optional[str] = None
     vitals: Optional[Dict[str, Any]] = {}
     socrates: Optional[SocratesInput] = None
     general_history: Optional[GeneralHistoryInput] = None

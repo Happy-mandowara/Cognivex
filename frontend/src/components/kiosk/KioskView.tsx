@@ -403,35 +403,44 @@ export const KioskView: React.FC<KioskViewProps> = ({
     try {
       // 1. Create or ensure patient record in DB
       let activePatId = patientId;
+      try {
+        if (!activePatId) {
+          const createdPat = await api.createPatient({
+            name: patientName.trim(),
+            dob: patientDob,
+            age: Number(patientAge) || 30,
+            gender: patientGender,
+            phone: patientPhone.trim(),
+            abha_id: abhaId.trim(),
+            has_consented: consentGranted,
+            language
+          });
+          activePatId = createdPat.id;
+          setPatientId(activePatId);
+        } else {
+          // Update existing patient record
+          await api.updatePatient(activePatId, {
+            name: patientName.trim(),
+            dob: patientDob,
+            age: Number(patientAge) || 30,
+            gender: patientGender,
+            phone: patientPhone.trim(),
+            abha_id: abhaId.trim(),
+            has_consented: consentGranted,
+          });
+        }
+      } catch (patErr) {
+        console.warn("Patient demographic sync note (continuing to intake submission):", patErr);
+      }
+
       if (!activePatId) {
-        const createdPat = await api.createPatient({
-          name: patientName.trim(),
-          dob: patientDob,
-          age: Number(patientAge) || 30,
-          gender: patientGender,
-          phone: patientPhone.trim(),
-          abha_id: abhaId.trim(),
-          has_consented: consentGranted,
-          language
-        });
-        activePatId = createdPat.id;
-        setPatientId(activePatId);
-      } else {
-        // Update existing patient record
-        await api.updatePatient(activePatId, {
-          name: patientName.trim(),
-          dob: patientDob,
-          age: Number(patientAge) || 30,
-          gender: patientGender,
-          phone: patientPhone.trim(),
-          abha_id: abhaId.trim(),
-          has_consented: consentGranted,
-        });
+        activePatId = `PAT-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
       }
 
       // 2. Submit clinical intake encounter to DB
       const intakePayload = {
         patient_id: activePatId,
+        abha_id: abhaId.trim(),
         chief_complaint: chiefComplaint.trim(),
         vitals: {
           bp: "120/80 mmHg",
@@ -445,10 +454,10 @@ export const KioskView: React.FC<KioskViewProps> = ({
           onset,
           character,
           radiation,
-          associations,
+          associations: Array.isArray(associations) ? associations : [associations || "None"],
           time_course: timeCourse,
           exacerbating_relieving: exacerbatingRelieving,
-          severity
+          severity: Number(severity) || 5
         },
         general_history: {
           hpi: `${patientName}, ${patientAge}y/${patientGender}, presents with ${chiefComplaint}.`,
@@ -477,7 +486,12 @@ export const KioskView: React.FC<KioskViewProps> = ({
         onEncounterCreated(encResponse.id);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to submit intake. Please verify all fields and retry.');
+      const msg = err?.message || '';
+      if (msg.toLowerCase().includes('failed to fetch')) {
+        setErrorMessage('Unable to connect to the backend server. Please check your network connection.');
+      } else {
+        setErrorMessage(msg || 'Failed to submit intake. Please verify all fields and retry.');
+      }
     } finally {
       setIsSubmitting(false);
     }

@@ -101,6 +101,23 @@ async def options_handler(full_path: str, request: Request):
     return res
 
 
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Global unhandled error: {exc}", exc_info=True)
+    origin = request.headers.get("origin", "*")
+    res = JSONResponse(
+        status_code=500,
+        content={"detail": f"Server error: {str(exc)}"}
+    )
+    res.headers["Access-Control-Allow-Origin"] = origin
+    res.headers["Access-Control-Allow-Credentials"] = "true"
+    res.headers["Access-Control-Allow-Methods"] = "*"
+    res.headers["Access-Control-Allow-Headers"] = "*"
+    return res
+
+
 # Include API Routers
 app.include_router(routes_auth.router, prefix=settings.API_V1_STR)
 app.include_router(routes_admin.router, prefix=settings.API_V1_STR)
