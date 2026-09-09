@@ -1,25 +1,4 @@
-export const getApiBaseUrl = (): string => {
-  // 1. User/UI override in localStorage
-  try {
-    let saved = localStorage.getItem('medikiosk_api_url');
-    if (saved && saved.trim()) {
-      let clean = saved.trim().replace(/\/+$/, '');
-      // Auto-heal missing .onrender.com or outdated default
-      if (clean.includes('medikiosk-backend-jfkm') && !clean.includes('.onrender.com')) {
-        clean = clean.replace('medikiosk-backend-jfkm', 'medikiosk-backend-jfkm.onrender.com');
-        localStorage.setItem('medikiosk_api_url', clean);
-      } else if (clean.includes('medikiosk-backend.onrender.com')) {
-        clean = clean.replace('medikiosk-backend.onrender.com', 'medikiosk-backend-jfkm.onrender.com');
-        localStorage.setItem('medikiosk_api_url', clean);
-      }
-      if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-        clean = `https://${clean}`;
-      }
-      return clean.endsWith('/api') ? clean : `${clean}/api`;
-    }
-  } catch {}
-
-  // 2. Build-time environment variable (ignore internal private network hosts like :10000)
+const getApiBaseUrl = (): string => {
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl && envUrl.trim() && !envUrl.includes(':10000') && !envUrl.startsWith('medikiosk-backend:')) {
     let clean = envUrl.trim().replace(/\/+$/, '');
@@ -29,44 +8,14 @@ export const getApiBaseUrl = (): string => {
     return clean.endsWith('/api') ? clean : `${clean}/api`;
   }
 
-  // 3. Render cloud auto-detection (runs on client browser on *.onrender.com)
   if (typeof window !== 'undefined' && window.location && window.location.hostname.endsWith('.onrender.com')) {
     return 'https://medikiosk-backend-jfkm.onrender.com/api';
   }
 
-  // 4. Default for local development
   return 'http://localhost:8000/api';
 };
 
-export const setApiBaseUrl = (newUrl: string): void => {
-  try {
-    if (!newUrl || !newUrl.trim()) {
-      localStorage.removeItem('medikiosk_api_url');
-    } else {
-      let clean = newUrl.trim().replace(/\/+$/, '');
-      if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-        clean = `https://${clean}`;
-      }
-      // If entered e.g. "https://medikiosk-backend-jfkm/api" without ".onrender.com"
-      const withoutProto = clean.replace(/^https?:\/\//, '');
-      const firstSegment = withoutProto.split('/')[0];
-      if (!firstSegment.includes('.') && !firstSegment.includes('localhost') && !firstSegment.includes(':')) {
-        clean = clean.replace(firstSegment, `${firstSegment}.onrender.com`);
-      }
-      if (!clean.endsWith('/api')) {
-        clean = `${clean}/api`;
-      }
-      localStorage.setItem('medikiosk_api_url', clean);
-    }
-  } catch {}
-};
-
-// Dynamic wrapper that evaluates getApiBaseUrl() dynamically inside template literals
-const API_BASE_URL = {
-  toString() {
-    return getApiBaseUrl();
-  }
-} as unknown as string;
+const API_BASE_URL = getApiBaseUrl();
 
 const getAuthHeaders = (): Record<string, string> => {
   const token = localStorage.getItem('medikiosk_token');

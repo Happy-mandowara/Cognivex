@@ -10,14 +10,10 @@ import {
   AlertCircle, 
   CheckCircle2, 
   ArrowRight,
-  Shield,
-  Server,
-  Settings,
-  RefreshCw
+  Shield
 } from 'lucide-react';
 import { useAuth, UserRole } from '../../context/AuthContext';
 import { FormField } from '../ui/FormField';
-import { getApiBaseUrl, setApiBaseUrl, api } from '../../services/api';
 
 interface AuthPageProps {
   initialMode?: 'login' | 'signup';
@@ -28,7 +24,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   initialMode = 'login',
   onSuccess 
 }) => {
-  const { login, signup, enterDemoUser, isLoading } = useAuth();
+  const { login, signup, isLoading } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   
   // Login form state
@@ -45,45 +41,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   // Status feedback
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-
-  // API URL Configuration & Health State
-  const [currentApiUrl, setCurrentApiUrl] = useState<string>(() => getApiBaseUrl());
-  const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
-  const [customApiUrlInput, setCustomApiUrlInput] = useState<string>(() => getApiBaseUrl());
-  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'checking' | 'healthy' | 'failed'>('idle');
-
-  const checkConnection = async (urlToCheck?: string) => {
-    setConnectionStatus('checking');
-    if (urlToCheck) {
-      setApiBaseUrl(urlToCheck);
-      setCurrentApiUrl(getApiBaseUrl());
-    }
-    try {
-      const res = await api.getHealth();
-      if (res && res.status === 'HEALTHY') {
-        setConnectionStatus('healthy');
-      } else {
-        setConnectionStatus('failed');
-      }
-    } catch {
-      setConnectionStatus('failed');
-    }
-  };
-
-  const formatAuthError = (rawError?: string): string => {
-    if (!rawError) return 'Authentication failed. Please verify your credentials.';
-    const lower = rawError.toLowerCase();
-    if (
-      lower.includes('failed to fetch') ||
-      lower.includes('preflight') ||
-      lower.includes('networkerror') ||
-      lower.includes('cors') ||
-      lower.includes('load failed')
-    ) {
-      return `CORS preflight / Network error connecting to ${getApiBaseUrl()}. If using Render, free services take 30–50s to wake up from sleep or your backend service may have a unique URL. Click "Configure Backend URL" below to test or update the endpoint.`;
-    }
-    return rawError;
-  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,11 +61,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         if (onSuccess) onSuccess('DOCTOR');
       }
     } else {
-      const formatted = formatAuthError(res.error);
-      setErrorMsg(formatted);
-      if (formatted.includes('CORS preflight') || formatted.includes('Network error')) {
-        setShowConfigModal(true);
-      }
+      setErrorMsg(res.error || 'Authentication failed. Please verify your credentials.');
     }
   };
 
@@ -137,14 +90,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       setSuccessMsg('Account registered successfully. Redirecting to workspace...');
       if (onSuccess) onSuccess(signupRole);
     } else {
-      const formatted = formatAuthError(res.error);
-      setErrorMsg(formatted);
-      if (formatted.includes('CORS preflight') || formatted.includes('Network error')) {
-        setShowConfigModal(true);
-      }
+      setErrorMsg(res.error || 'Registration failed. An account with this email may already exist.');
     }
   };
-
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center py-12 sm:px-6 lg:px-8 selection:bg-[#2563EB] selection:text-white">
@@ -164,36 +112,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="bg-white py-8 px-6 sm:px-8 border border-[#E2E8F0] rounded-[12px] shadow-[0_1px_3px_0_rgba(15,23,42,0.06)] relative">
           
-          {/* Instant 1-Click Persona Access */}
-          <div className="mb-5 p-3 bg-[#EFF6FF] border border-[#BFDBFE] rounded-[10px] space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-[#1E40AF] uppercase tracking-wide">Instant 1-Click Persona Access</span>
-              <span className="text-[10px] text-[#2563EB] font-medium">Skip Login</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  enterDemoUser('DOCTOR');
-                  if (onSuccess) onSuccess('DOCTOR');
-                }}
-                className="py-2 px-3 bg-white hover:bg-[#DBEAFE] border border-[#93C5FD] text-[#1E40AF] rounded-[8px] text-xs font-semibold flex items-center justify-center space-x-1.5 shadow-xs transition-colors cursor-pointer"
-              >
-                <span>🩺 Enter as Doctor</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  enterDemoUser('PATIENT');
-                  if (onSuccess) onSuccess('PATIENT');
-                }}
-                className="py-2 px-3 bg-white hover:bg-[#DCFCE7] border border-[#86EFAC] text-[#166534] rounded-[8px] text-xs font-semibold flex items-center justify-center space-x-1.5 shadow-xs transition-colors cursor-pointer"
-              >
-                <span>👤 Enter as Patient</span>
-              </button>
-            </div>
-          </div>
-
           {/* Toggle: Login vs Signup */}
           <div className="flex bg-[#F1F5F9] p-1 rounded-[8px] mb-6 border border-[#E2E8F0]">
             <button
@@ -248,49 +166,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           {/* SIGN IN FORM */}
           {mode === 'login' && (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
-              {/* Quick Demo Fill Buttons */}
-              <div className="p-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[8px] space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-semibold text-[#64748B] uppercase tracking-wider">Quick Demo Accounts</span>
-                  <span className="text-[10px] text-[#2563EB] font-medium">1-Click Fill</span>
-                </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoginEmail('doctor@medikiosk.demo');
-                      setLoginPassword('Doctor!123');
-                      setErrorMsg('');
-                    }}
-                    className="py-1 px-2 bg-white hover:bg-[#EFF6FF] border border-[#CBD5E1] hover:border-[#2563EB] rounded-[6px] text-[10px] font-semibold text-[#1E293B] text-center transition-colors cursor-pointer"
-                  >
-                    🩺 Doctor
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoginEmail('patient@medikiosk.demo');
-                      setLoginPassword('Patient!123');
-                      setErrorMsg('');
-                    }}
-                    className="py-1 px-2 bg-white hover:bg-[#F0FDF4] border border-[#CBD5E1] hover:border-[#16A34A] rounded-[6px] text-[10px] font-semibold text-[#1E293B] text-center transition-colors cursor-pointer"
-                  >
-                    👤 Patient
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoginEmail('admin@medikiosk.demo');
-                      setLoginPassword('Admin!123');
-                      setErrorMsg('');
-                    }}
-                    className="py-1 px-2 bg-white hover:bg-[#FAF5FF] border border-[#CBD5E1] hover:border-[#9333EA] rounded-[6px] text-[10px] font-semibold text-[#1E293B] text-center transition-colors cursor-pointer"
-                  >
-                    🛡️ Admin
-                  </button>
-                </div>
-              </div>
-
               <FormField label="Email Address" required>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-[#64748B] absolute left-3.5 top-3" />
@@ -419,81 +294,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               </button>
             </form>
           )}
-
-          {/* Backend Connection & Configuration */}
-          <div className="mt-6 pt-4 border-t border-[#F1F5F9] text-xs">
-            <div className="flex items-center justify-between text-[#64748B]">
-              <div className="flex items-center space-x-1.5 truncate max-w-[240px]">
-                <Server className="w-3.5 h-3.5 shrink-0 text-[#2563EB]" />
-                <span className="truncate font-mono text-[11px]">{currentApiUrl}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowConfigModal(!showConfigModal);
-                  setCustomApiUrlInput(currentApiUrl);
-                }}
-                className="inline-flex items-center space-x-1 text-[#2563EB] hover:text-[#1D4ED8] font-semibold cursor-pointer shrink-0 ml-2"
-              >
-                <Settings className="w-3.5 h-3.5" />
-                <span>{showConfigModal ? 'Close' : 'Configure'}</span>
-              </button>
-            </div>
-
-            {showConfigModal && (
-              <div className="mt-3 p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[8px] space-y-2.5 animate-in fade-in">
-                <label className="block text-[11px] font-semibold text-[#334155]">
-                  Backend API Endpoint (Render / Custom)
-                </label>
-                <input
-                  type="text"
-                  value={customApiUrlInput}
-                  onChange={(e) => setCustomApiUrlInput(e.target.value)}
-                  placeholder="https://medikiosk-backend.onrender.com/api"
-                  className="w-full px-2.5 py-1.5 bg-white border border-[#CBD5E1] rounded-[6px] text-xs font-mono text-[#0F172A] focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
-                />
-                <div className="flex items-center space-x-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      checkConnection(customApiUrlInput);
-                    }}
-                    disabled={connectionStatus === 'checking'}
-                    className="py-1 px-3 bg-[#0F172A] hover:bg-[#1E293B] text-white rounded-[6px] text-[11px] font-semibold flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${connectionStatus === 'checking' ? 'animate-spin' : ''}`} />
-                    <span>{connectionStatus === 'checking' ? 'Testing...' : 'Save & Test'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setApiBaseUrl('');
-                      const def = getApiBaseUrl();
-                      setCustomApiUrlInput(def);
-                      setCurrentApiUrl(def);
-                      checkConnection(def);
-                    }}
-                    className="py-1 px-2.5 text-[#64748B] hover:text-[#0F172A] text-[11px] font-medium cursor-pointer"
-                  >
-                    Reset Default
-                  </button>
-                </div>
-
-                {connectionStatus === 'healthy' && (
-                  <div className="text-[11px] text-[#15803D] font-semibold flex items-center space-x-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>Backend is connected and healthy!</span>
-                  </div>
-                )}
-                {connectionStatus === 'failed' && (
-                  <div className="text-[11px] text-[#B91C1C] font-semibold flex items-center space-x-1">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>Could not reach endpoint. Please ensure the backend is active on Render.</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
 
         </div>
 
